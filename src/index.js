@@ -1,3 +1,1 @@
-console.log('Hello world!')
-console.log('Done')
-console.log('Привет')
+import './scss/index.scss';

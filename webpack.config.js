@@ -1,65 +1,107 @@
-const path = require('path')
-const HtmlWebpackPlugin = require('html-webpack-plugin')
-const CopyPlugin = require("copy-webpack-plugin")
-const ESLintPlugin = require('eslint-webpack-plugin')
+const path = require('path');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 
-module.exports = (env, argv) => {
+const mode = process.env.NODE_ENV || 'development';
+const devMode = mode === 'development';
 
-    const isProd = argv.mode === 'production'
-    const isDev = !isProd
-    
-    console.log('IsProd', isProd);
-    console.log('IsDev', isDev);
+const target = devMode ? 'web' : 'browserslist';
+const devtool = devMode ? 'source-map' : undefined;
 
-
-    const filename = ext => isProd ? `[name].[contenthash].bundle.${ext}` : `[name].bundle.${ext}`
-
-    const plugins = () => {
-        const base = [
-            new HtmlWebpackPlugin({
-                template: './index.html'
-            }),
-            new CopyPlugin({
-                patterns: [
-                {
-                    from: path.resolve(__dirname, 'src', 'favicon.ico'),
-                    to: path.resolve(__dirname, 'dist')
-                },
+module.exports = {
+    mode,
+    target,
+    devtool,
+    devServer: {
+        port: 3000,
+        open: true,
+        hot: true,
+    },
+    entry: ['@babel/polyfill', path.resolve(__dirname, 'src', 'index.js')],
+    output: {
+        path: path.resolve(__dirname, 'dist'),
+        clean: true,
+        filename: '[name].[contenthash].js',
+        assetModuleFilename: 'assets/[name][ext]',
+    },
+    plugins: [
+        new HtmlWebpackPlugin({
+            template: path.resolve(__dirname, 'src', 'index.html')
+        }),
+        new MiniCssExtractPlugin({
+            filename: '[name].[contenthash].css',
+        })
+    ],
+    module: {
+        rules: [
+            {
+                test: /\.html$/i,
+                loader: 'html-loader',
+            },
+            {
+                test: /\.(c|sa|sc)ss$/i,
+                use: [
+                    devMode ? "style-loader" : MiniCssExtractPlugin.loader,
+                    "css-loader",
+                    {
+                        loader: 'postcss-loader',
+                        options: {
+                            postcssOptions: {
+                                plugins: [require('postcss-preset-env')],
+                            }
+                        }
+                    },
+                    "sass-loader"
                 ],
-            }),
-        ]
-
-        if (isDev) {
-            base.push(new ESLintPlugin())
-        }
-        return base
-    }
-
-    return {
-        target: 'web',
-        context: path.resolve(__dirname, 'src'),
-        entry: {
-            main: './index.js'
-        },
-        output: {
-            path: path.resolve(__dirname, 'dist'),
-            filename: filename('js'),
-            clean: true
-        },
-        resolve: {
-            extensions: ['.js'],
-            alias: {
-                '@': path.resolve(__dirname, 'src'),
-                '@core': path.resolve(__dirname, 'src', 'core'),
+            },
+            {
+                test: /\.woff2?$/i,
+                type: 'asset/resource',
+                generator: {
+                    filename: 'fonts/[name][ext]'
+                }
+            },
+            {
+                test: /\.(jpe?g|png|webp|svg|gif)$/i,
+                use: [
+                    {
+                        loader: 'image-webpack-loader',
+                        options: {
+                            mozjpeg: {
+                              progressive: true,
+                            },
+                            // optipng.enabled: false will disable optipng
+                            optipng: {
+                              enabled: false,
+                            },
+                            pngquant: {
+                              quality: [0.65, 0.90],
+                              speed: 4
+                            },
+                            gifsicle: {
+                              interlaced: false,
+                            },
+                            // the webp option will enable WEBP
+                            webp: {
+                              quality: 75
+                            }
+                        }
+                    }
+                ],
+                type: 'asset/resource',
+            },
+            {
+                test: /\.(?:js|mjs|cjs)$/,
+                exclude: /node_modules/,
+                use: {
+                  loader: 'babel-loader',
+                  options: {
+                    presets: [
+                      ['@babel/preset-env', { targets: "defaults" }]
+                    ]
+                  }
+                }
             }
-        },
-        devServer: {
-            port: '2500',
-            open: true,
-            hot: true,
-            watchFiles: './'
-        },
-        devtool: isDev ? 'source-map' : false, 
-        plugins: plugins(),
+        ]
     }
 }
